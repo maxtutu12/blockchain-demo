@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -42,8 +43,8 @@ func NewBlock(idx int64, proof int, preHash string) *Block {
 	}
 }
 
-func calcHash(b *Block) string {
-	jsonByte, err := json.Marshal(b)
+func calcHash(b Block) string {
+	jsonByte, err := json.Marshal(&b)
 	if err != nil {
 		return ""
 	}
@@ -102,7 +103,7 @@ func (bc *BlockChain) NewTransaction(sender, recipient string, amount int) int64
 
 func (bc *BlockChain) Mine(identifier string) {
 	lastBlock := bc.LastBlock()
-	hash := calcHash(lastBlock)
+	hash := calcHash(*lastBlock)
 	proof := bc.proofOfWork(lastBlock.Proof)
 
 	bc.NewTransaction("0", identifier, 1)
@@ -113,4 +114,33 @@ func (bc *BlockChain) Mine(identifier string) {
 	curTransaction = curTransaction[0:0]
 
 	bc.Blocks = append(bc.Blocks, block)
+}
+
+func ValidChain(blocks []*Block) bool {
+	lastBlock := blocks[0]
+	curIndex := 1
+	end := len(blocks)
+
+	for {
+		if curIndex >= end {
+			break
+		}
+
+		curBlock := blocks[curIndex]
+		fmt.Println("curblock:", curBlock)
+		fmt.Println("lastblock:", lastBlock)
+
+		if curBlock.PreviousHash != calcHash(*lastBlock) {
+			return false
+		}
+
+		if !validProof(lastBlock.Proof, curBlock.Proof) {
+			return false
+		}
+
+		lastBlock = curBlock
+		curIndex += 1
+	}
+
+	return true
 }
